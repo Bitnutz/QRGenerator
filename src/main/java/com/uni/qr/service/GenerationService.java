@@ -6,20 +6,25 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import com.uni.qr.model.Log;
 import com.uni.qr.model.URL;
+import com.uni.qr.repository.LogRepository;
 import com.uni.qr.repository.UrlRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.sql.rowset.serial.SerialBlob;
+import javax.transaction.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.sql.Blob;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 
 @Service
 public class GenerationService {
@@ -29,18 +34,28 @@ public class GenerationService {
     @Autowired
     UrlRepository urlRepository;
 
-    //might delete this one
-    public static void generateQRCodeImage(String text, int width, int height, String filePath) {
-        QRCodeWriter qrCodeWriter = new QRCodeWriter();
-        BitMatrix bitMatrix;
-        try {
-            bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height);
-            Path path = FileSystems.getDefault().getPath(filePath);
-            MatrixToImageWriter.writeToPath(bitMatrix, "PNG", path);
-            logger.info("Processed the URL successfully");
-        } catch (WriterException | IOException e) {
-            logger.error("Couldn't process the URL for creating an image with the following error: ", e);
-        }
+    @Autowired
+    LogRepository logRepository;
+
+    @Transactional
+    public URL addURL(String vanillaUrl, String description, Integer width, Integer height) {
+        Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+
+        URL urlObject = new URL();
+        urlObject.setVanilla_URL(vanillaUrl);
+        urlObject.setDescription(description);
+        urlObject.setDeleteFlag(false);
+        urlObject.setTimestamp(currentTimestamp);
+        urlObject.setResult(convertByteArrayToBlob(GenerationService.getQRCodeImage(vanillaUrl, width,height)));
+
+        urlRepository.save(urlObject);
+
+        Log currentLog = new Log();
+        currentLog.setAction("inserted a row into URL table!");
+        currentLog.setTimestamp(currentTimestamp);
+
+        logRepository.save(currentLog);
+        return urlObject;
     }
 
 

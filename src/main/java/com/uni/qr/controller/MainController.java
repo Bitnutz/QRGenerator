@@ -32,30 +32,12 @@ public class MainController {
     private LogRepository logRepository;
 
     @PostMapping(path="/add") // Map ONLY POST Requests
-    @Transactional
     public @ResponseBody
     String addNewUrl (@RequestParam String vanillaUrl,
                       @RequestParam String description,
                       @RequestParam Integer width,
                       @RequestParam Integer height) {
-
-        Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
-
-        URL urlObject = new URL();
-        urlObject.setVanilla_URL(vanillaUrl);
-        urlObject.setDescription(description);
-        urlObject.setDeleteFlag(false);
-        urlObject.setTimestamp(currentTimestamp);
-        urlObject.setResult(service.convertByteArrayToBlob(GenerationService.getQRCodeImage(vanillaUrl, width,height)));
-
-        urlRepository.save(urlObject);
-
-
-        Log currentLog = new Log();
-        currentLog.setAction("inserted a row into URL table!");
-        currentLog.setTimestamp(currentTimestamp);
-
-        logRepository.save(currentLog);
+        URL urlObject = service.addURL(vanillaUrl, description, width, height);
         return "Saved!"+ "\nUID = " + urlObject.getUid();
     }
 
