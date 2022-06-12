@@ -1,10 +1,14 @@
 package com.uni.qr.service;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.util.IOUtils;
+import com.uni.qr.model.URL;
+import com.uni.qr.repository.UrlRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +19,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Objects;
+import java.io.InputStream;
+import java.util.*;
+
+import static org.apache.http.entity.ContentType.*;
 
 @Service
 public class StorageService {
@@ -26,6 +33,26 @@ public class StorageService {
 
     @Autowired
     private AmazonS3 client;
+
+    @Autowired
+    private UrlRepository urlRepository;
+
+    public void upload(String path,String fileName,
+                       Optional<Map<String, String>> optionalMetaData,
+                       InputStream inputStream) {
+        ObjectMetadata objectMetadata = new ObjectMetadata();
+        optionalMetaData.ifPresent(map -> {
+            if (!map.isEmpty()) {
+                map.forEach(objectMetadata::addUserMetadata);
+            }
+        });
+        try {
+            client.putObject(path, fileName, inputStream, objectMetadata);
+        } catch (AmazonServiceException e) {
+            throw new IllegalStateException("Failed to upload the file", e);
+        }
+    }
+
 
     public void uploadFile(MultipartFile file) {
         File singleFile = convertMultipartFile(file);
