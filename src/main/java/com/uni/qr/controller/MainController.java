@@ -31,30 +31,31 @@ public class MainController {
     @Autowired
     private LogRepository logRepository;
 
-    @PostMapping(path="/add") // Map ONLY POST Requests
+    @PostMapping(path = "/add") // Map ONLY POST Requests
     public @ResponseBody
-    String addNewUrl (@RequestParam String vanillaUrl,
-                      @RequestParam String description,
-                      @RequestParam Integer width,
-                      @RequestParam Integer height) {
+    String addNewUrl(@RequestParam String vanillaUrl,
+                     @RequestParam String description,
+                     @RequestParam Integer width,
+                     @RequestParam Integer height) {
         URL urlObject = service.addURL(vanillaUrl, description, width, height);
-        return "Saved!"+ "\nUID = " + urlObject.getUid();
+        return "Saved!" + "\nUID = " + urlObject.getUid();
     }
 
 
-    @GetMapping("/get")
     @Transactional
+    @GetMapping("/get")
     public void getQR(HttpServletResponse response, @RequestParam Integer uid) throws IOException, SQLException {
         response.setContentType("image/jpeg");
+        response.setHeader("Content-Disposition", "attachment;filename=persons.jpg");
 
         Log currentLog = new Log();
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-        if(!urlRepository.findById(uid).isPresent()) {
+        if (!urlRepository.findById(uid).isPresent()) {
             currentLog.setAction("Tried to access a row, which does not exists");
             currentLog.setTimestamp(timestamp);
             return;
         }
-        if(urlRepository.findById(uid).get().isDeleteFlag()) {
+        if (urlRepository.findById(uid).get().isDeleteFlag()) {
             currentLog.setAction("Tried to access a row, which was deleted");
             currentLog.setTimestamp(timestamp);
             return;
@@ -72,18 +73,19 @@ public class MainController {
 
     @PostMapping("/delete")
     @Transactional
-    public @ResponseBody String deleteQR(@RequestParam Integer uid) {
+    public @ResponseBody
+    String deleteQR(@RequestParam Integer uid) {
         Log currentLog = new Log();
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 
 
-        if(!urlRepository.findById(uid).isPresent()) {
+        if (!urlRepository.findById(uid).isPresent()) {
             currentLog.setAction("Tried to delete a row, which not exists");
             currentLog.setTimestamp(timestamp);
             logRepository.save(currentLog);
             return null;
         }
-        if(urlRepository.findById(uid).get().isDeleteFlag()) {
+        if (urlRepository.findById(uid).get().isDeleteFlag()) {
             currentLog.setAction("Tried to delete a row, which is already deleted");
             currentLog.setTimestamp(timestamp);
             logRepository.save(currentLog);

@@ -3,16 +3,36 @@
 
 <head>
     <!-- Include Bootstrap for styling -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css"/>
 
     <style>
     .qr-code {
       max-width: 200px;
       margin: 10px;
     }
-  </style>
+
+
+
+
+    </style>
 
     <title>QR Code Generator</title>
+    <script type="text/javascript">
+function handleResponse(e) {
+   const imageUrl = this.URL.createObjectURL(e);
+   document.querySelector("#image").src = imageUrl;
+}
+
+async function myfunction() {
+const response = await fetch("http://localhost:8080/get?uid=1", {
+            method: 'GET'
+        })
+        handleResponse(response.blob())
+}
+
+
+
+    </script>
 </head>
 
 <body>
@@ -23,9 +43,9 @@
          this will change according to the
          data entered later -->
         <img src="https://chart.googleapis.com/chart?cht=qr&chl=Hello+World&chs=160x160&chld=L|0"
-             class="qr-code img-thumbnail img-responsive" />
+             class="qr-code img-thumbnail img-responsive"/>
     </div>
-
+    <img id="image"/>
     <div class="form-horizontal">
         <div class="form-group">
             <label class="control-label col-sm-2"
@@ -38,7 +58,7 @@
                     required data -->
                 <input type="text" size="60"
                        maxlength="60" class="form-control"
-                       id="content" placeholder="Enter content" />
+                       id="content" placeholder="Enter content"/>
             </div>
         </div>
         <div class="form-group">
@@ -46,8 +66,7 @@
 
                 <!-- Button to generate QR Code for
                  the entered data -->
-                <button type="button" class=
-                        "btn btn-default" id="generate">
+                <button type="button" class="btn btn-default" id="generate" onclick="myfunction()">
                     Generate
                 </button>
                 <button type="button" class=
