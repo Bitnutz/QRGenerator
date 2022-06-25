@@ -14,14 +14,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.sql.rowset.serial.SerialBlob;
 import javax.transaction.Transactional;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
+import java.io.InputStream;
 import java.sql.Blob;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -40,7 +39,19 @@ public class GenerationService {
     @Transactional
     public URL addURL(String vanillaUrl, String description, Integer width, Integer height) {
         Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+        Log currentLog = new Log();
 
+        if(vanillaUrl.contains("/")) {
+            currentLog.setAction("Cannot parse detailed URLs, which contain paths.");
+            currentLog.setTimestamp(currentTimestamp);
+            URL unusableUrl = new URL();
+            unusableUrl.setTimestamp(new Timestamp(System.currentTimeMillis()));
+            unusableUrl.setResult(null);
+            unusableUrl.setDescription("unusable");
+            unusableUrl.setVanilla_URL("www.unusable.com");
+            unusableUrl.setDeleteFlag(true);
+            return unusableUrl;
+        }
         URL urlObject = new URL();
         urlObject.setVanilla_URL(vanillaUrl);
         urlObject.setDescription(description);
@@ -50,12 +61,97 @@ public class GenerationService {
 
         urlRepository.save(urlObject);
 
-        Log currentLog = new Log();
+
         currentLog.setAction("inserted a row into URL table!");
         currentLog.setTimestamp(currentTimestamp);
 
         logRepository.save(currentLog);
         return urlObject;
+    }
+
+    @Transactional
+    public InputStream getQrFinal(Integer uid) {
+        Log currentLog = new Log();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        if(!urlRepository.findById(uid).isPresent()) {
+            currentLog.setAction("Tried to access a row, which does not exists");
+            currentLog.setTimestamp(timestamp);
+            logger.error(String.format("No URL found with the given uid: %d%n", uid));
+            return null;
+        }
+        if(urlRepository.findById(uid).get().isDeleteFlag()) {
+            currentLog.setAction("Tried to access a row, which was deleted");
+            currentLog.setTimestamp(timestamp);
+            logger.error(String.format("The URL with the uid: %d was already deleted\n", uid));
+            return null;
+        }
+        currentLog.setAction(String.format("Fetched the QR code with uid: %d", uid));
+        currentLog.setTimestamp(timestamp);
+        logRepository.save(currentLog);
+        URL currentUrl = urlRepository.findById(uid).get();
+
+        byte[] imageBytes = new byte[0];
+        try {
+            imageBytes = IOUtils.toByteArray(currentUrl.getResult().getBinaryStream());
+        } catch (IOException | SQLException e) {
+            logger.error("Unable to convert BLOB to byte array: ", e);
+        }
+        return new ByteArrayInputStream(imageBytes);
+    }
+
+    @Transactional
+    public String deleteGeneratedQr(Integer uid) {
+        Log currentLog = new Log();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+
+
+        if(!urlRepository.findById(uid).isPresent()) {
+            currentLog.setAction("Tried to delete a row, which does not exists");
+            currentLog.setTimestamp(timestamp);
+            logRepository.save(currentLog);
+            return currentLog.getAction();
+        }
+        if(urlRepository.findById(uid).get().isDeleteFlag()) {
+            currentLog.setAction("Tried to delete a row, which is already deleted");
+            currentLog.setTimestamp(timestamp);
+            logRepository.save(currentLog);
+            return currentLog.getAction();
+        }
+        URL currentUrl = urlRepository.findById(uid).get();
+        currentUrl.setDeleteFlag(true);
+        urlRepository.save(currentUrl);
+        return String.format("Deleted UID: %d", uid);
+    }
+
+    @Transactional
+    public byte[] getQr(Integer uid) throws SQLException {
+
+        Log currentLog = new Log();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        if(!urlRepository.findById(uid).isPresent()) {
+            currentLog.setAction("Tried to access a row, which does not exists");
+            currentLog.setTimestamp(timestamp);
+            return null;
+        }
+        if(urlRepository.findById(uid).get().isDeleteFlag()) {
+            currentLog.setAction("Tried to access a row, which was deleted");
+            currentLog.setTimestamp(timestamp);
+            return null;
+        }
+        currentLog.setAction(String.format("Fetched the QR code with uid: %d", uid));
+        currentLog.setTimestamp(timestamp);
+        logRepository.save(currentLog);
+        URL currentUrl = urlRepository.findById(uid).get();
+        System.out.println(currentUrl.getResult().getBinaryStream());
+
+        byte[] imageBytes = new byte[0];
+        try {
+            imageBytes = getImage(uid);
+        } catch (IOException | SQLException e) {
+            logger.error("Unable to convert inputStream to byte array while fetching the QR in GenerationService.getQr(uid): ", e);
+        }
+
+        return imageBytes;
     }
 
 
@@ -96,11 +192,4 @@ public class GenerationService {
 
         return result;
     }
-
-    public byte[] convertBlobToByteArray(Blob blob) throws SQLException {
-        byte[] result;
-        result = blob.getBytes(1, (int) blob.length());
-        return result;
-    }
-
 }

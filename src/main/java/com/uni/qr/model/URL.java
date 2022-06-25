@@ -5,6 +5,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import java.sql.Blob;
+import java.sql.Time;
 import java.sql.Timestamp;
 
 @Entity
@@ -22,6 +23,7 @@ public class URL {
     private Timestamp timestamp;
 
     private boolean deleteFlag;
+
 
     public Integer getUid() {
         return uid;
